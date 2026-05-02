@@ -1,0 +1,37 @@
+name: Deploy to EC2 using Docker
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Source
+      uses: actions/checkout@v4
+
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd /home/ubuntu
+
+          if [ ! -d "app" ]; then
+            git clone https://github.com/${{ github.repository }} app
+          fi
+
+          cd app
+          git pull origin main
+
+          docker stop myapp || true
+          docker rm myapp || true
+          docker rmi myapp || true
+
+          docker build -t myapp .
+          docker run -d -p 80:3000 --name myapp myapp
